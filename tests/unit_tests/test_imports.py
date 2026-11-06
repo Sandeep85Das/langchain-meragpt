@@ -1,6 +1,7 @@
 from langchain_meragpt import __all__
 
 EXPECTED = [
+    "ChatMeragpt",
     "MeragptAPIError",
     "MeragptClient",
     "MeragptDecider",
