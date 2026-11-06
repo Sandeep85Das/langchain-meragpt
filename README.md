@@ -1,8 +1,14 @@
 # langchain-meragpt
 
-LangChain integration for **meraGPT Decider 1**, a decision model. Ask a typed question
-about any text or JSON state (yes/no, pick one, or a score on a scale) and get back
-calibrated probabilities, not free text.
+LangChain integration for [meraGPT](https://meragpt.com), small models that each do one
+job:
+
+- **Decider 1**, a decision model. Ask a typed question about any text or JSON state
+  (yes/no, pick one, or a score on a scale) and get back calibrated probabilities, not
+  free text.
+- **Restyler 1**, a rewriting model. Give it machine-written prose and it rewrites the
+  text so it reads the way a person writes. It is trained to keep facts, names, numbers,
+  links and formatting. Available as a chat model, `ChatMeragpt`.
 
 Decider 1 is state of the art among zero-shot models on the
 [typed-decisions benchmark](https://huggingface.co/datasets/LocalLLaMA/typed-decisions)
@@ -18,6 +24,7 @@ This package gives you:
 | `MeragptRouterMiddleware` | picks the model for each call |
 | `MeragptToolApprovalMiddleware` | approves or blocks a tool call before it runs |
 | `MeragptStopMiddleware` | stops an agent that is looping or has given up |
+| `ChatMeragpt` | Restyler 1 as a LangChain chat model |
 
 ## Installation
 
@@ -153,13 +160,48 @@ agent = create_agent("openai:gpt-6-luna", tools=[MeragptDecisionTool()])
 The agent calls `meragpt_decide` with `state`, `question`, `kind` (`yes_no`, `choice` or
 `score`) and `options`, and gets JSON back, for example `{"p_yes": 0.83}`.
 
+## Restyler 1 as a chat model (`ChatMeragpt`)
+
+```python
+from langchain_meragpt import ChatMeragpt
+
+restyler = ChatMeragpt()  # model="restyler-1"
+draft = (
+    "The utilization of our platform facilitates the optimization of workflow "
+    "efficiency across organizational boundaries."
+)
+print(restyler.invoke(draft).content)
+```
+
+It fits at the end of a chain, after the model that wrote the draft:
+
+```python
+chain = prompt | writer_llm | StrOutputParser() | ChatMeragpt()
+```
+
+The chat endpoint is a compatibility layer over a single-task model, so it differs from
+a general chat model in a few places:
+
+- Only the last user message is sent. System messages and earlier turns are dropped,
+  because the model rewrites one document at a time.
+- Sampling parameters are not offered. Decoding is fixed per model.
+- Tool calling and structured output are not supported.
+- `stream()` yields one whole paragraph per chunk, not one token.
+- A request takes up to 6,000 characters. Send a longer document a section at a time.
+
+`response_metadata["meragpt"]` carries what the API reports about the rewrite, such as
+`blocks_rewritten`, `blocks_total` and `cost_nano_usd`. The model page lists measured
+fact retention, so check output where exact facts matter:
+[meragpt.com/models/restyler-1](https://meragpt.com/models/restyler-1).
+
 ## Async
 
-Every class has an async path (`ainvoke`, `adecide`, and the async middleware hooks).
+Every class has an async path (`ainvoke`, `astream`, `adecide`, and the async middleware hooks).
 
 ## What gets sent
 
 Each decision sends the state and your questions to `POST https://meragpt.com/v1/systemone`.
+`ChatMeragpt` sends the last user message to `POST https://meragpt.com/v1/chat/completions`.
 The middleware sends only what it needs:
 
 - **Decision and stop middleware:** the last 20 turns.
@@ -176,7 +218,7 @@ Long texts are clipped. See the
 |---|---|---|
 | `MERAGPT_API_KEY` | (required) | your API key, `mg-live-...` |
 | `MERAGPT_BASE_URL` | `https://meragpt.com` | API base URL, for a proxy or gateway |
-| `MERAGPT_MODEL` | `decider-1` | model id |
+| `MERAGPT_MODEL` | `decider-1` | Decider model id (`ChatMeragpt` takes `model=`, default `restyler-1`) |
 
 Every class also takes `api_key=` and `base_url=`, or a shared `client=MeragptClient(...)`.
 Requests refused with 429 or 503 while capacity scales up are retried, honouring
@@ -193,6 +235,8 @@ make lint
 
 ## Links
 
-- API reference: [meragpt.com/docs/decider](https://meragpt.com/docs/decider)
-- Model card, limits and evaluation: [meragpt.com/models/decider-1](https://meragpt.com/models/decider-1)
+- API reference: [meragpt.com/docs/decider](https://meragpt.com/docs/decider),
+  [meragpt.com/docs/chat-completions](https://meragpt.com/docs/chat-completions)
+- Model cards, limits and evaluation: [meragpt.com/models/decider-1](https://meragpt.com/models/decider-1),
+  [meragpt.com/models/restyler-1](https://meragpt.com/models/restyler-1)
 - Launch post: [Introducing Decider 1](https://meragpt.com/blog/introducing-decider-1)

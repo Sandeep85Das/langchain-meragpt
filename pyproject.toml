@@ -4,12 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "langchain-meragpt"
-version = "0.1.0"
-description = "LangChain integration for meraGPT Decider 1: typed decisions with calibrated probabilities, as a Runnable, a tool and agent middleware"
+version = "0.2.0"
+description = "LangChain integration for meraGPT: Decider 1 typed decisions as a Runnable, a tool and agent middleware, and Restyler 1 as a chat model"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "meraGPT" }]
-keywords = ["langchain", "meragpt", "decider", "decisions", "classification", "middleware", "agents", "routing", "guardrails"]
+keywords = ["langchain", "meragpt", "decider", "decisions", "classification", "middleware", "agents", "routing", "guardrails", "restyler", "chat"]
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
